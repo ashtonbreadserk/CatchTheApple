@@ -194,7 +194,11 @@ void DisplayMenu() {
             cin >> sensitivity;
         }
         else if (choice == 5) {
-            cout << 
+            cout << "WELCOME TO APPLE MANIA GUIDE!!!\n" << endl;
+            cout << "Objective: Catch as many falling apples as you can to score points. Avoid missing apples, or you'll lose lives!\n" << endl;
+            cout << "Use the A and D keys (A, D) to move your basket left or right.\n" << endl;
+            cout << "Scoring: \nEach apple caught earns you 1 point.\n" << endl;
+            cout << "Lives: \nYou start with 3 lives. \nMissing an apple will cost you 1 life. \nThe game ends when you lose all your lives.\n" << endl;
         }
         else if (choice == 6) {
             exit(0);
