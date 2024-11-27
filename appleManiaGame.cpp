@@ -1,75 +1,117 @@
 #include <iostream>
+#include <fstream>
+#include <vector>
+#include <string>
 #include <conio.h>
 #include <windows.h>
+#include <algorithm>
+
 using namespace std;
 
 // Global variables
 bool gameOver;
 const int width = 40;
 const int height = 20;
-int x;            // bucket's position (x-axis)
-int fruitX, fruitY;   // Position of the fruit
-int score;        // Player's score
-int fruitCount = 0; // Counter for dropped fruits
+int x;                  // Basket position
+int fruitX, fruitY;     // Fruit position
+int score;              // Current score
+int fruitCount = 0;     // Missed fruits
+int basketSpeed = 1;    // Basket speed multiplier
+int sensitivity = 1;    // Basket sensitivity
+string currentUser = ""; // Logged-in user
+vector<pair<string, int>> leaderboard; // Leaderboard
 
-enum eDirecton { STOP = 0, LEFT, RIGHT }; // bucket's Directions
-eDirecton dir;    // Current direction of the bucket
+enum eDirecton { STOP = 0, LEFT, RIGHT };
+eDirecton dir;
 
 // Setup game variables
 void Setup() {
     gameOver = false;
     dir = STOP;
     x = width / 2; // Start at the middle of the board
-    fruitX = rand() % width; // Randomly position the fruit
-    fruitY = 0; // Start fruit at the top of the screen
+    fruitX = rand() % width;
+    fruitY = 0;
     score = 0;
     fruitCount = 0;
 }
 
+// Save leaderboard to file
+void SaveLeaderboard() {
+    ofstream file("leaderboard.txt");
+    for (const auto& entry : leaderboard) {
+        file << entry.first << " " << entry.second << endl;
+    }
+    file.close();
+}
+
+// Load leaderboard from file
+void LoadLeaderboard() {
+    leaderboard.clear();
+    ifstream file("leaderboard.txt");
+    string name;
+    int score;
+    while (file >> name >> score) {
+        leaderboard.emplace_back(name, score);
+    }
+    file.close();
+}
+
+// Display leaderboard
+void DisplayLeaderboard() {
+    cout << "Leaderboard:" << endl;
+    cout << "+------------------+---------+" << endl;
+    cout << "| Player           | Score   |" << endl;
+    cout << "+------------------+---------+" << endl;
+    for (const auto& entry : leaderboard) {
+        cout << "| " << entry.first << string(17 - entry.first.length(), ' ') << "| " << entry.second << "     |" << endl;
+    }
+    cout << "+------------------+---------+" << endl;
+    system("pause");
+}
+
+// Update leaderboard
+void UpdateLeaderboard() {
+    leaderboard.emplace_back(currentUser, score);
+    sort(leaderboard.begin(), leaderboard.end(), [](const auto& a, const auto& b) {
+        return b.second < a.second;
+        });
+    if (leaderboard.size() > 10) leaderboard.pop_back();
+    SaveLeaderboard();
+}
+
 // Draw the game board
 void Draw() {
-    system("cls"); // Clear console
+    system("cls");
 
-    // Top border
-    for (int i = 0; i < width + 2; i++)
-        cout << "-";
+    for (int i = 0; i < width + 2; i++) cout << "-";
     cout << endl;
 
-    // Board contents
     for (int i = 0; i < height; i++) {
         for (int j = 0; j < width + 2; j++) {
-            if (j == x && i == height - 1) { // bucket
-                cout << "|__|";
-            }
-            else if (i == fruitY && j == fruitX) // Fruit
-                cout << "O";
-            else {
-                cout << " ";
-            }
+            if (j == x && i == height - 1) cout << "|___|";
+            else if (i == fruitY && j == fruitX) cout << "O";
+            else cout << " ";
         }
         cout << endl;
     }
 
-    // Bottom border
-    for (int i = 0; i < width + 2; i++)
-        cout << "-";
+    for (int i = 0; i < width + 2; i++) cout << "-";
     cout << endl;
 
-    // Display the score
-    cout << "Score: " << score << endl;
+    cout << "Player: " << currentUser << " | Score: " << score << " | Missed: " << fruitCount << endl;
 }
 
-// Process player input
+// Process input
 void Input() {
     if (_kbhit()) {
         switch (_getch()) {
-        case 'a': // Move left
+        case 'a':
             dir = LEFT;
             break;
-        case 'd': // Move right
+        case 'd':
             dir = RIGHT;
             break;
-        case 'q': // Quit the game
+        case 'q':
             gameOver = true;
             break;
         }
@@ -78,76 +120,60 @@ void Input() {
 
 // Update game logic
 void Logic() {
-    // Move the bucket
     switch (dir) {
     case LEFT:
-        x--;
+        x -= basketSpeed * sensitivity;
         break;
     case RIGHT:
-        x++;
+        x += basketSpeed * sensitivity;
         break;
     default:
         break;
     }
 
-    // Implement wall wrapping
     if (x >= width) x = 0;
     else if (x < 0) x = width - 1;
 
-    // Update fruit position
     fruitY++;
 
-    // Check if the fruit reaches the bottom
     if (fruitY >= height) {
-        fruitY = 0; // Reset the fruit's position to top
-        fruitX = rand() % width; // Randomly generate a new fruit position
+        fruitY = 0;
+        fruitX = rand() % width;
         fruitCount++;
-
-        if (fruitCount >= 3) { // If three fruits are missed
-            gameOver = true; // End the game
+        if (fruitCount == 3) {
+            gameOver = true;
         }
     }
 
-    // Check if the bucket catches the fruit
     if (x == fruitX && height - 1 == fruitY) {
-        score += 10; // Increase score
-        fruitY = 0; // Reset fruit position
-        fruitX = rand() % width; // Randomly generate new fruit position
-        fruitCount = 0; // Reset missed fruit count
+        score += 10;
+        fruitY = 0;
+        fruitX = rand() % width;
+        fruitCount = 0;
     }
 }
 
-// Display the menu
+// Handle user login
+void Login() {
+    cout << "Enter your name: ";
+    cin >> currentUser;
+    cout << "Welcome, " << currentUser << "!" << endl;
+}
+
+// Display menu
 void DisplayMenu() {
     int choice;
 
-    cout << R"(
- ________   ______   ______   __       ______       ___ __ __   ________   ___   __     ________  ________      
-/_______/\ /_____/\ /_____/\ /_/\     /_____/\     /__//_//_/\ /_______/\ /__/\ /__/\  /_______/\/_______/\     
-\::: _  \ \\:::_ \ \\:::_ \ \\:\ \    \::::_\/_    \::\| \| \ \\::: _  \ \\::\_\\  \ \ \__.::._\/\::: _  \ \    
- \::(_)  \ \\:(_) \ \\:(_) \ \\:\ \    \:\/___/\    \:.      \ \\::(_)  \ \\:. `-\  \ \   \::\ \  \::(_)  \ \   
-  \:: __  \ \\: ___\/ \: ___\/ \:\ \____\::___\/_    \:.\-/\  \ \\:: __  \ \\:. _    \ \  _\::\ \__\:: __  \ \  
-   \:.\ \  \ \\ \ \    \ \ \    \:\/___/\\:\____/\    \. \  \  \ \\:.\ \  \ \\. \`-\  \ \/__\::\__/\\:.\ \  \ \ 
-    \__\/\__\/ \_\/     \_\/     \_____\/ \_____\/     \__\/ \__\/ \__\/\__\/ \__\/ \__\/\________\/ \__\/\__\/     
-                                       )        (   (         *       ) (          
-                                      ( /(  (     )\ ))\ )    (  `   ( /( )\ )       
-                                       )\()) )\   (()/(()/(    )\))(  )\()|()/(  (    
-                                      ((_)((((_)(  /(_))(_))  ((_)()\((_)\ /(_)) )\   
-                                       _((_)\ _ )\(_))(_))_   (_()((_) ((_|_))_ ((_)  
-                                      | || (_)_\(_) _ \|   \  |  \/  |/ _ \|   \| __| 
-                                      | __ |/ _ \ |   /| |) | | |\/| | (_) | |) | _|  
-                                      |_||_/_/ \_\|_|_\|___/  |_|  |_|\___/|___/|___| 
-                                                                                                                                                           
-)" << '\n';
     while (true) {
         cout << "+----------------------------------+" << endl;
         cout << "|           Apple Mania            |" << endl;
-        cout << "|----------------------------------|" << endl;
-        cout << "|                                  |" << endl;
+        cout << "+----------------------------------+" << endl;
         cout << "| 1 | Start Game                   |" << endl;
-        cout << "| 2 | Instructions                 |" << endl;
-        cout << "| 3 | Exit                         |" << endl;
-        cout << "|                                  |" << endl;
+        cout << "| 2 | View Leaderboard             |" << endl;
+        cout << "| 3 | Set Basket Speed             |" << endl;
+        cout << "| 4 | Set Sensitivity              |" << endl;
+        cout << "| 5 | Instructions                 |" << endl;
+        cout << "| 6 | Exit                         |" << endl;
         cout << "+----------------------------------+" << endl;
         cout << "Enter your choice: ";
         cin >> choice;
@@ -157,27 +183,50 @@ void DisplayMenu() {
             break;
         }
         else if (choice == 2) {
-            cout << "Instructions: Use 'a' to move left and 'd' to move right to catch the fruit." << endl;
-            cout << "If you miss 5 fruits, the game ends." << endl;
-            system("pause");
+            DisplayLeaderboard();
+        }
+        else if (choice == 3) {
+            cout << "Enter basket speed (1-5): ";
+            cin >> basketSpeed;
+        }
+        else if (choice == 4) {
+            cout << "Enter sensitivity (1-5): ";
+            cin >> sensitivity;
         }
         else if (choice == 5) {
+            cout << 
+        }
+        else if (choice == 6) {
             exit(0);
+        }
+        else {
+            cout << "Invalid choice. Try again." << endl;
         }
     }
 }
 
-// Main game loop
+// Main function
 int main() {
-    DisplayMenu(); // Show the menu
+    LoadLeaderboard();
+    Login();
 
-    while (!gameOver) {
-        Draw();   // Render game
-        Input();  // Handle input
-        Logic();  // Update logic
-        Sleep(50); // Control speed
+    while (true) {
+        DisplayMenu();
+        while (!gameOver) {
+            Draw();
+            Input();
+            Logic();
+            Sleep(70);
+        }
+        UpdateLeaderboard();
+        cout << "Game Over! Final Score: " << score << endl;
+        char returnToMenu;
+        cout << "Do you want to return to the menu? (y/n): ";
+        cin >> returnToMenu;
+        if (returnToMenu != 'y' && returnToMenu != 'Y') {
+            cout << "Thank you for playing!" << endl;
+            break;
+        }
     }
-
-    cout << "Game Over! Final Score: " << score << endl;
     return 0;
 }
